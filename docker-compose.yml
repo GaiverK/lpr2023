@@ -1,0 +1,63 @@
+services:
+
+  config-server:
+    container_name: config-server
+    hostname: config-server
+    build:
+      context: './config-server/'
+      dockerfile: Dockerfile
+    image: config-server:latest
+    healthcheck:
+      test: ["CMD-SHELL", " netstat -an | grep -q 8083"]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - docker_network
+    expose:
+      - 8083
+
+  eureka-server:
+    container_name: eureka-server
+    hostname: eureka-server
+    build:
+      context: './eureka-server/'
+      dockerfile: Dockerfile
+    image: eureka-server:latest
+    healthcheck:
+      test: [ "CMD-SHELL", " netstat -an | grep -q 8081" ]
+      interval: 5s
+      timeout: 5s
+      retries: 20
+    networks:
+      - docker_network
+    expose:
+      - 8081
+    depends_on:
+      config-server:
+        condition: service_healthy
+
+  eureka-client:
+    container_name: eureka-client
+    build:
+      context: './eureka-client/'
+      dockerfile: Dockerfile
+    image: eureka-client:latest
+    depends_on:
+      eureka-server:
+        condition: service_healthy
+
+  api-gateway:
+    container_name: api-gateway
+    build:
+      context: './api-gateway/'
+      dockerfile: Dockerfile
+    image: api-gateway:latest
+    ports:
+      - 8082:8082
+    depends_on:
+      - 'eureka-client'
+
+networks:
+  docker_network:
+    driver: bridge
